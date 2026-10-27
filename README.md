@@ -1,7 +1,9 @@
 # journal-manuscript-mathtype
 
-A [Claude Code](https://claude.com/claude-code) skill for writing and typesetting scientific journal manuscripts as Word
-documents with **editable MathType equations**, on Linux, without Word or MathType installed.
+Tools and an agent skill for writing and typesetting scientific journal manuscripts as Word documents with
+**editable MathType equations**, on Linux, without Word or MathType installed. The scripts run on their own from the
+command line or Python; `SKILL.md` and `references/` tell an AI coding agent (Claude Code, OpenAI Codex, or any agent
+that can read Markdown instructions and run shell commands) how to use them.
 
 - Builds a DOCX manuscript from structured JSON: title block, sections, inline and display equations, figures,
   tables, captions, cross-references, numbered references.
@@ -13,8 +15,8 @@ documents with **editable MathType equations**, on Linux, without Word or MathTy
 ## Install
 
 ```bash
-git clone https://github.com/hhwon/journal-manuscript-mathtype ~/.claude/skills/journal-manuscript-mathtype
-cd ~/.claude/skills/journal-manuscript-mathtype
+git clone https://github.com/hhwon/journal-manuscript-mathtype
+cd journal-manuscript-mathtype
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements-generator.txt       # includes the optional docx-equation backend (AGPL-3.0)
 python -m playwright install chromium
@@ -26,10 +28,13 @@ TeX Gyre Termes Math (`fonts-texgyre-math`) and URW Standard Symbols PS (`fonts-
 
 Only editing existing equations? `pip install -r requirements.txt` is enough.
 
+As an agent skill: put (or symlink) the folder into the agent's skills directory, e.g.
+`~/.claude/skills/journal-manuscript-mathtype` for Claude Code (`agents/openai.yaml` carries the metadata for OpenAI
+Codex). Agents without a skills mechanism can be pointed at `SKILL.md` as instructions.
+
 ## Use
 
-In Claude Code, ask for a manuscript, a section, a revision or an equation edit; the skill is picked up from
-`SKILL.md`. From the shell:
+With an agent, ask for a manuscript, a section, a revision or an equation edit. From the shell:
 
 ```bash
 # new manuscript from JSON (see examples/demo_paper.json and references/input-schema.md)
