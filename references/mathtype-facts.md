@@ -50,7 +50,7 @@ The modules that implement these facts: `mtef_profile.py` (MTEF), `preview_math.
 | Sizes: 12 pt, 58 %, 42 %, 150 %, 100 % (+ 75 %, 150 %, 1 pt). | EqLab |
 | Spacing order: 0 line, 1 matrix row, 2 matrix column, 3 superscript height, 4 subscript depth, 5 sub/superscript gap, 6 limit height, 7 limit depth, 8 limit line spacing, 9 numerator height, 10 denominator depth, 11 bar overhang, 12 bar thickness, 13 sub-fraction bar, 14 slash gap, 15 fence overhang, 16 operator spacing, 17 non-operator spacing, 18 character width, 19 minimum gap, 20–22 radical, 23 embellishment gap, 24 prime height, 25–28 strokes, 29 horizontal fence gap. | spec |
 | Factory spacing values (%): 150, 150, 100, 45, 25, 8, 25, 100, 100, 35, 100, 8, 5, 2.5, 8, 8, 100, 100, 0, 8, 17, 8, 100, 12.5, 45, 5, 5, 5, 5, 10 — identical in all 467 genuine objects. docx-equation writes 100/100/200 for the first three, which changes matrices when MathType redraws. | genuine, EqLab |
-| A MathType preference file (.eqp, "MathType INI v1") holds these settings; EquationLab's `src/eqp.mjs` reads it. Not parsed here yet: give the settings as a JSON profile (`--profile`). | EqLab |
+| A MathType preference file (.eqp, "MathType INI v1": `[Styles]` key=Font[,B|,I], `[Sizes]` and `[Spacing]` key=value pt or %, keys in the order above) holds these settings. `mtef_profile.read_eqp` reads it (`--profile file.eqp`); the factory file in `examples/` reproduces the built-in profile byte for byte. | EqLab (`src/eqp.mjs`), spec |
 
 ## 4. Layout: what MathType draws
 

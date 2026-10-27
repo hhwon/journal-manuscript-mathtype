@@ -45,60 +45,178 @@ FULL, SUB, SYM = b'\x0a', b'\x0b', b'\x0d'
 # ---------------------------------------------------------------------------------------------------------------------
 # Profile
 # ---------------------------------------------------------------------------------------------------------------------
-# factory spacing table (identical in 467 genuine equations and in MathType's 'Times+Symbol 12.eqp'):
-# 150 150 100 45 25 8 25 100 100 35 100 8 5 2.5 8 8 100 100 0 8 17 8 100 12.5 45 5 5 5 5 10 (%)
-FACTORY_SPACING = bytes.fromhex('1e4150f4150f4100f445f425f48f425f4100f4100f435f4100f48f45f42a5f48f48f4100f4100f40f48f'
-                                '417f48f4100f412a5f445f45f45f45f45f410f')
-FONT_DEFS = [(5, 'Times New Roman'), (3, 'Symbol'), (5, 'Courier New'), (4, 'MT Extra')]   # (encoding, name)
-TNR, SYMBOL_FONT, COURIER, MTEXTRA = 1, 2, 3, 4
+# MathType equation preferences, in the order of the MTEF EQN_PREFS record and of MathType's .eqp files
+# ("; MathType INI v1: Equation Preferences", sections [Styles], [Sizes], [Spacing]).
+STYLE_KEYS = ['Text', 'Function', 'Variable', 'LCGreek', 'UCGreek', 'Symbol', 'Vector', 'Number', 'User1', 'User2', 'MTExtra']
+SIZE_KEYS = ['Full', 'Script', 'ScriptScript', 'Symbol', 'SubSymbol', 'User1', 'User2', 'SmallLargeIncr']
+SPACING_KEYS = ['LineSpacing', 'MatrixRowSpacing', 'MatrixColSpacing', 'SuperscriptHeight', 'SubscriptDepth', 'SubSupGap',
+                'LimHeight', 'LimDepth', 'LimLineSpacing', 'NumerHeight', 'DenomDepth', 'FractBarOver', 'FractBarThick',
+                'SubFractBarThick', 'FractGap', 'FenceOver', 'OperSpacing', 'NonOperSpacing', 'CharWidth', 'MinGap',
+                'VertRadGap', 'HorizRadGap', 'RadWidth', 'EmbellGap', 'PrimeHeight', 'BoxStrokeThick', 'StikeThruThick',
+                'MatrixLineThick', 'RadStrokeThick', 'HorizFenceGap']
+# MathType's factory 'Times+Symbol 12' (identical styles/spacing in 467 genuine equations; EquationLab new-formula.mjs)
+FACTORY_STYLES = [('Times New Roman', 0), ('Times New Roman', 0), ('Times New Roman', 2), ('Symbol', 2), ('Symbol', 0),
+                  ('Symbol', 0), ('Times New Roman', 1), ('Times New Roman', 0), ('Courier New', 0), ('Times New Roman', 0),
+                  ('MT Extra', 0)]
+FACTORY_SIZES = [('12', 'pt'), ('58', '%'), ('42', '%'), ('150', '%'), ('100', '%'), ('75', '%'), ('150', '%'), ('1', 'pt')]
+FACTORY_SPACING = [(v, '%') for v in ('150 150 100 45 25 8 25 100 100 35 100 8 5 2.5 8 8 100 100 0 8 17 8 100 12.5 45 '
+                                      '5 5 5 5 10').split()]
+UNIT_CODES = {'in': 0, 'cm': 1, 'pt': 2, 'pc': 3, '%': 4}
+ENCODINGS = {'Symbol': 3, 'MT Extra': 4}             # predefined MTEF encodings; other fonts: WinAllBasicCodePages (5)
 MATRIX_ALIGN = {'left': 0, 'center': 1, 'right': 2}
+
+
+def encode_dimensions(dims):
+    """MTEF dimension array: count, then per value a unit nibble, digit nibbles (. = A, - = B) and F."""
+    nib = []
+    for value, unit in dims:
+        nib.append(UNIT_CODES[unit])
+        nib += [10 if c == '.' else 11 if c == '-' else int(c) for c in value]
+        nib.append(15)
+    if len(nib) % 2:
+        nib.append(0)
+    return bytes([len(dims)]) + bytes(nib[i] << 4 | nib[i + 1] for i in range(0, len(nib), 2))
+
+
+def read_eqp(path):
+    """MathType preference file (.eqp, 'MathType INI v1') -> (styles, sizes, spacing, notes). Keys missing from the
+    file keep MathType's factory values (listed in notes)."""
+    text = Path(path).read_text(encoding='utf-8-sig', errors='strict')
+    if not re.search(r'^\s*;\s*MathType INI v1\s*:\s*Equation Preferences', text, re.M | re.I):
+        raise ValueError(f'{path}: not a MathType INI v1 equation preference file')
+    styles, sizes, spacing, notes = list(FACTORY_STYLES), list(FACTORY_SIZES), list(FACTORY_SPACING), []
+    seen, section = set(), ''
+    keys = {'styles': STYLE_KEYS, 'sizes': SIZE_KEYS, 'spacing': SPACING_KEYS}
+    for n, line in enumerate(text.splitlines(), 1):
+        line = line.strip()
+        if not line or line.startswith(';'):
+            continue
+        m = re.match(r'^\[([^\]]+)\]$', line)
+        if m:
+            section = m.group(1).strip().lower()
+            continue
+        if '=' not in line or section not in keys:
+            notes.append(f'line {n} ignored: {line[:60]}')
+            continue
+        key, value = (x.strip() for x in line.split('=', 1))
+        key = next((k for k in keys[section] if k.lower() == key.lower()), None)
+        if key is None:
+            notes.append(f'line {n} ignored (unknown key): {line[:60]}')
+            continue
+        seen.add((section, key))
+        i = keys[section].index(key)
+        if section == 'styles':
+            font, _, flag = value.partition(',')
+            flag = flag.strip().upper()
+            if flag not in ('', 'B', 'I'):
+                raise ValueError(f'{path} line {n}: unsupported style flag {flag!r}')
+            styles[i] = (font.strip(), {'': 0, 'B': 1, 'I': 2}[flag])
+        else:
+            m = re.match(r'^(-?(?:\d+(?:\.\d*)?|\.\d+))\s*(pt|%|cm|in|pc)$', value)
+            if not m:
+                raise ValueError(f'{path} line {n}: unsupported dimension {value!r}')
+            (sizes if section == 'sizes' else spacing)[i] = (m.group(1), m.group(2))
+    for section, ks in keys.items():
+        missing = [k for k in ks if (section, k) not in seen]
+        if missing:
+            notes.append(f'[{section.title()}] not in the file, factory value used: {", ".join(missing)}')
+    if sizes[0][1] != 'pt':
+        raise ValueError(f'{path}: the full size must be given in pt')
+    return styles, sizes, spacing, notes
 
 
 @dataclass
 class Profile:
-    """Font styles (Text, Function, Variable, LC Greek, UC Greek, Symbol, Vector, Number, User 1, User 2, MT Extra,
-    Text FE) as (font index, bits: 1 bold, 2 italic); font indices refer to FONT_DEFS (1-based)."""
-    greek: str = 'symbol'                       # 'symbol' (MathType default) or 'times'
-    matrix_align: str = 'center'                # MathType default; 'left' or 'right' on request
-    spacing: bytes = FACTORY_SPACING
-    styles: list = field(default_factory=list)
+    """MathType equation preferences: 11 styles (font, bits: 1 bold, 2 italic), 8 sizes, 30 spacing values, plus the
+    matrix column alignment (not part of MathType's preferences)."""
+    styles: list = field(default_factory=lambda: list(FACTORY_STYLES))
+    sizes: list = field(default_factory=lambda: list(FACTORY_SIZES))
+    spacing: list = field(default_factory=lambda: list(FACTORY_SPACING))
+    matrix_align: str = 'center'
+    source: str = 'MathType factory (Times+Symbol 12)'
+    notes: list = field(default_factory=list)
 
     def __post_init__(self):
-        if self.greek not in ('symbol', 'times'):
-            raise ValueError("greek must be 'symbol' or 'times'")
         if self.matrix_align not in MATRIX_ALIGN:
             raise ValueError(f'matrix_align must be one of {sorted(MATRIX_ALIGN)}')
-        if not self.styles:
-            g = SYMBOL_FONT if self.greek == 'symbol' else TNR
-            self.styles = [(TNR, 0), (TNR, 0), (TNR, 2), (g, 2), (g, 0), (SYMBOL_FONT, 0), (TNR, 1), (TNR, 0),
-                           (COURIER, 0), (TNR, 0), (MTEXTRA, 0), (0, None)]
+        if len(self.styles) != 11 or len(self.sizes) != 8 or len(self.spacing) != 30:
+            raise ValueError('a profile needs 11 styles, 8 sizes and 30 spacing values')
+        if self.styles[5][0] != 'Symbol':
+            self.notes.append('Symbol style not in the Symbol font: MathType cannot build tall brackets and integrals '
+                              'from it when it redraws an equation')
+
+    @property
+    def greek(self):                                # 'symbol' if Greek is in the Symbol font (Symbol positions)
+        return 'symbol' if self.styles[3][0] == 'Symbol' else 'times'
+
+    @property
+    def symbol_positions(self):
+        return self.styles[5][0] == 'Symbol'
+
+    @property
+    def full_pt(self):
+        return float(self.sizes[0][0])
+
+    def pct(self, key):
+        """A spacing value in percent of the full size."""
+        return self._pct(self.spacing[SPACING_KEYS.index(key)])
+
+    def size_pct(self, key):
+        """A size in percent of the full size."""
+        return self._pct(self.sizes[SIZE_KEYS.index(key)])
+
+    def _pct(self, dim):
+        v, unit = float(dim[0]), dim[1]
+        return v if unit == '%' else v * {'pt': 1, 'pc': 12, 'in': 72, 'cm': 72 / 2.54}[unit] / self.full_pt * 100
+
+    def font_defs(self):
+        fonts = []
+        for f, _ in self.styles:
+            if f not in fonts:
+                fonts.append(f)
+        return fonts
 
 
 PROFILE = Profile()
 UNMAPPED_SYMBOLS: set = set()        # Symbol-style characters without a Symbol position (report them)
 
 
-def configure(greek: str = 'symbol', matrix_align: str = 'center', profile_json: str | None = None) -> Profile:
-    """Set the equation profile. A JSON file may give {"greek": ..., "matrix_align": ...}. A MathType .eqp file is
-    not parsed yet: convert its settings to this JSON (see references/mathtype-facts.md)."""
+def configure(greek: str | None = None, matrix_align: str = 'center', profile_json: str | None = None,
+              eqp: str | None = None) -> Profile:
+    """Set the equation profile.
+
+    eqp: a MathType preference file (.eqp) - all styles, sizes and spacing are taken from it; profile_json may also
+    name a .eqp file, or a JSON file {"eqp": ..., "greek": ..., "matrix_align": ...}. greek ('symbol' | 'times')
+    overrides the Greek styles; without any argument the profile is MathType's factory 'Times+Symbol 12'."""
     global PROFILE
+    if profile_json and str(profile_json).lower().endswith('.eqp'):
+        eqp, profile_json = profile_json, None
     if profile_json:
         data = json.loads(Path(profile_json).read_text())
+        eqp = data.get('eqp', eqp)
         greek, matrix_align = data.get('greek', greek), data.get('matrix_align', matrix_align)
-    PROFILE = Profile(greek=greek, matrix_align=matrix_align)
+    if eqp:
+        styles, sizes, spacing, notes = read_eqp(eqp)
+        source = str(eqp)
+    else:
+        styles, sizes, spacing, notes = list(FACTORY_STYLES), list(FACTORY_SIZES), list(FACTORY_SPACING), []
+        source = 'MathType factory (Times+Symbol 12)'
+    if greek is not None:
+        if greek not in ('symbol', 'times'):
+            raise ValueError("greek must be 'symbol' or 'times'")
+        font = 'Symbol' if greek == 'symbol' else styles[2][0]       # Times Greek: the Variable style's font
+        styles[3], styles[4] = (font, 2), (font, 0)
+    PROFILE = Profile(styles, sizes, spacing, matrix_align, source, notes)
     return PROFILE
 
 
 def _eqn_prefs():
-    old = MT._equation_preferences()
-    assert old[0] == 0x12
-    _, pos = _dimensions(old, 2)                        # backend sizes = factory (12 pt, 58, 42, 150, 100 %)
-    out = bytearray(old[:pos]) + PROFILE.spacing
-    out.append(len(PROFILE.styles))
-    for fid, st in PROFILE.styles:
-        out.append(fid)
-        if fid:
-            out.append(st)
+    fonts = PROFILE.font_defs()
+    out = bytearray([0x12, 0x00]) + encode_dimensions(PROFILE.sizes) + encode_dimensions(PROFILE.spacing)
+    out.append(12)                                   # 11 styles + Text FE (unused)
+    for font, bits in PROFILE.styles:
+        out += bytes([fonts.index(font) + 1, bits])
+    out.append(0)
     return bytes(out)
 
 
@@ -106,7 +224,7 @@ def _preamble(mathtype_version):
     version = mathtype_version.upper()
     assert version in {'DSMT4', 'DSMT6'}
     head = b'\x05\x01\x00\x06\x09' + version.encode('ascii') + b'\x00\x01' + b'\x13WinAllBasicCodePages\x00'
-    return head + b''.join(MT._font_def(enc, name) for enc, name in FONT_DEFS) + _eqn_prefs()
+    return head + b''.join(MT._font_def(ENCODINGS.get(f, 5), f) for f in PROFILE.font_defs()) + _eqn_prefs()
 
 
 MT._preamble = _preamble
@@ -146,7 +264,7 @@ def char_record(ch, typeface, embell=b''):
     opt = 0x01 if embell else 0x00
     code = MTCODE.get(ch, ord(ch)) if typeface == SYMBOL else ord(ch)
     pos = None
-    if typeface == SYMBOL:
+    if typeface == SYMBOL and PROFILE.symbol_positions:
         pos = SYMBOL_POS.get(ch)
         if pos is None:
             UNMAPPED_SYMBOLS.add(ch)

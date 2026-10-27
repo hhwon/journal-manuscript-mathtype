@@ -52,7 +52,7 @@ This produces `Eq. (1)` and `Figure 1` as **Word REF fields**, not literal numbe
 - No unsupported formulas are silently replaced by pictures or OMML.
 - `--layout-preview` produces labelled placeholders instead of equations; it is unsuitable for publication.
 - Figure paths are relative to the input JSON file, not the output DOCX.
-- `--math-preview-scale 0.158` (default) gives 12 pt maths: Chromium renders at device scale 2 with 38 px per em. Equation options: `--greek times|symbol`, `--matrix-align left|center|right`, `--display-align left|center`, `--indent-twips 482`, `--profile file.json` (see SKILL.md).
+- `--math-preview-scale 0.158` (default) gives 12 pt maths: Chromium renders at device scale 2 with 38 px per em. Equation options: `--greek times|symbol`, `--matrix-align left|center|right`, `--display-align left|center`, `--indent-twips 482`, `--profile settings.eqp` (MathType preference file) or `--profile file.json` (see SKILL.md).
 - The optional `.equations.json` file exposes source formula text; treat it as confidential research material.
 
 ## Non-production sample guard

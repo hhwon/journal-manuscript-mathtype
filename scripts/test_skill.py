@@ -191,7 +191,25 @@ class HouseStyleAndGenuineMathTypeTest(unittest.TestCase):
         self.assertEqual(P.encode_char('θ')[-1], 0x71)          # Symbol position of theta
         pre = P._preamble('DSMT4')
         self.assertIn(b'Symbol\x00', pre)
-        self.assertIn(P.FACTORY_SPACING, pre)
+        self.assertIn(P.encode_dimensions(P.FACTORY_SPACING), pre)
+        P.configure(greek='times', matrix_align='left')
+
+    @unittest.skipUnless(HAVE_BACKEND, 'docx-equation not installed')
+    def test_eqp_preferences(self):
+        import mtef_profile as P
+        from mtef_font_audit import _dimensions
+        eqp = ROOT / 'examples' / 'mathtype-factory.eqp'
+        P.configure(eqp=str(eqp))
+        a = P._preamble('DSMT4')
+        P.configure(greek='symbol', matrix_align='center')
+        self.assertEqual(a, P._preamble('DSMT4'))               # the factory .eqp = the built-in factory profile
+        with tempfile.TemporaryDirectory() as tmp:
+            f = Path(tmp) / 'p.eqp'
+            f.write_text(eqp.read_text().replace('Full=12 pt', 'Full=11 pt').replace('Script=58 %', 'Script=80 %'))
+            prof = P.configure(eqp=str(f))
+            self.assertEqual((prof.full_pt, prof.size_pct('Script')), (11.0, 80.0))
+            sizes, _ = _dimensions(P._eqn_prefs(), 2)
+            self.assertEqual((sizes[0]['value'], sizes[1]['value']), ('11', '80'))
         P.configure(greek='times', matrix_align='left')
 
     @unittest.skipUnless(HAVE_BACKEND, 'docx-equation not installed')

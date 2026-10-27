@@ -107,8 +107,12 @@ docx-equation must do the same, in this order. Evidence for every rule: [mathtyp
 
 **House-style defaults** (configurable; the defaults of this skill): Times New Roman for every letter including Greek, bold always upright,
 matrix contents left-aligned, display equations left-aligned at the 0.85 cm body indent with the number right-aligned
-by a tab. MathType's own defaults instead: `--greek symbol --matrix-align center --display-align center`. A MathType
-preference file (.eqp) is not parsed yet; give its settings as `--profile profile.json`.
+by a tab. MathType's own defaults instead: `--greek symbol --matrix-align center --display-align center`.
+
+**MathType preference file:** `--profile settings.eqp` takes all styles (fonts, bold/italic), sizes and the 30 spacing
+values from a MathType .eqp file ("MathType INI v1"; `examples/mathtype-factory.eqp` shows the format). They go into
+the EQN_PREFS of every equation and drive the preview geometry; keys missing from the file keep factory values and are
+reported. If the user supplies an .eqp, use it; otherwise use the defaults.
 
 Requirements of the generator path (not optional): Playwright with its Chromium, genuine Times New Roman, TeX Gyre
 Termes Math (`fonts-texgyre-math` or TeX Live) and URW Standard Symbols PS (`fonts-urw-base35`); `doctor.py` and

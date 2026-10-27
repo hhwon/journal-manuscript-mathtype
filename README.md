@@ -46,6 +46,19 @@ number on a right tab, matrices left-aligned, Greek in Times New Roman, three-li
 `Table n.` captions, numbered references. MathType's own equation defaults: `--greek symbol --matrix-align center
 --display-align center`. Details: `references/format-profile.md`.
 
+## Equation preferences (.eqp)
+
+Give a MathType preference file to use its fonts, sizes and spacing:
+
+```bash
+python scripts/build_paper.py paper.json -o paper.docx --profile my-settings.eqp
+```
+
+Save your settings in MathType (Preferences → Equation Preferences → Save to File) or start from
+`examples/mathtype-factory.eqp`. The settings are written into every equation, so MathType keeps them when an equation
+is edited, and the previews are laid out with them. `--greek` and `--matrix-align` still apply on top. Without
+`--profile`, the default layout above is used.
+
 ## How it stays editable
 
 The generator's raw output is not accepted by Windows MathType. The skill fixes the OLE container (directory tree,

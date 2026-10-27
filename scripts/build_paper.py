@@ -234,13 +234,13 @@ def figure_block(doc, item, anchor, registry, convert, preview, refs, base_dir):
     cap.paragraph_format.keep_together = True
 
 
-def make_doc(spec, path, preview, chrome_path, write_manifest, source_dir=None, preview_scale=0.158,
+def make_doc(spec, path, preview, chrome_path, write_manifest, source_dir=None, preview_scale=None,
              profile=None, display_align='left', indent_twips=482):
     if not isinstance(spec, dict) or not isinstance(spec.get('sections'), list):
         raise ValueError('Manuscript root must be an object with a sections array')
     if not spec.get('title'):
         raise ValueError('Manuscript title must not be empty')
-    if not (0.10 <= float(preview_scale) <= 1.0):
+    if preview_scale is not None and not (0.10 <= float(preview_scale) <= 1.0):
         raise ValueError('Equation preview scale must be between 0.10 and 1.0 pt/px')
     refs, blocks = make_anchors(spec)
     validate_refs(spec, refs)
@@ -249,6 +249,10 @@ def make_doc(spec, path, preview, chrome_path, write_manifest, source_dir=None, 
     if deps:
         import mtef_profile                       # genuine-equivalent MTEF (references/mathtype-facts.md)
         mtef_profile.configure(**(profile or {'greek': 'times', 'matrix_align': 'left'}))
+        for note in mtef_profile.PROFILE.notes:
+            print('equation profile:', note)
+        if preview_scale is None:                 # previews: 38 px per em at device scale 2 = the full size
+            preview_scale = mtef_profile.PROFILE.full_pt / 76
         mtef_profile.UNMAPPED_SYMBOLS.clear()
         import preview_math                       # MathType-like previews with measured baselines
         preview_math.install()
@@ -414,16 +418,17 @@ def main():
     parser.add_argument('--chrome-path', help='Path to Chromium/Google Chrome for MathML previews')
     parser.add_argument('--layout-preview', action='store_true',
                         help='NON-PRODUCTION: show labelled placeholders instead of MathType OLE')
-    parser.add_argument('--math-preview-scale', type=float, default=0.158,
-                        help='Point-per-pixel of the equation previews (0.158 = 12 pt maths; Chromium renders at 2x)')
+    parser.add_argument('--math-preview-scale', type=float, default=None,
+                        help='Point-per-pixel of the equation previews (default: full size / 76, i.e. 0.158 for 12 pt)')
     # defaults = the house style: Times New Roman only (Greek too), matrices left-aligned, display equations left-aligned
     # at the 0.85 cm body indent with the number right-aligned by a tab. MathType's own defaults:
     # --greek symbol --matrix-align center --display-align center
-    parser.add_argument('--greek', choices=['symbol', 'times'], default='times',
-                        help='Greek letters in Times New Roman (default) or in the Symbol font (MathType factory)')
+    parser.add_argument('--greek', choices=['symbol', 'times'], default=None,
+                        help='Greek letters in Times New Roman (default without --profile) or in the Symbol font')
     parser.add_argument('--matrix-align', choices=['center', 'left', 'right'], default='left',
                         help='Column alignment inside matrices (default left; MathType factory: center)')
-    parser.add_argument('--profile', help='JSON equation profile {"greek": ..., "matrix_align": ...}')
+    parser.add_argument('--profile', help='MathType preference file (.eqp: fonts, sizes, spacing), or a JSON file '
+                                          '{"eqp": ..., "greek": ..., "matrix_align": ...}')
     parser.add_argument('--display-align', choices=['center', 'left'], default='left',
                         help='Display equations left-aligned at --indent-twips (default) or centred')
     parser.add_argument('--indent-twips', type=int, default=482, help='Left indent of display equations (482 = 0.85 cm)')
@@ -434,7 +439,8 @@ def main():
     spec = json.loads(spec_path.read_text(encoding='utf-8'))
     output_path = Path(args.output).resolve()
     # Figure paths resolve relative to spec, not output.
-    profile = {'greek': args.greek, 'matrix_align': args.matrix_align, 'profile_json': args.profile}
+    greek = args.greek or (None if args.profile else 'times')    # an .eqp keeps its own Greek unless --greek is given
+    profile = {'greek': greek, 'matrix_align': args.matrix_align, 'profile_json': args.profile}
     result = make_doc(spec, output_path, args.layout_preview, args.chrome_path,
                       args.write_equation_manifest, spec_path.parent, args.math_preview_scale,
                       profile, args.display_align, args.indent_twips)

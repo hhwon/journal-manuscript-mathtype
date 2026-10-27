@@ -41,21 +41,33 @@ CACHE = Path(os.environ.get('MATHTYPE_PREVIEW_CACHE', Path.home() / '.cache' / '
 MATH_FAMILY, SYMBOL_FAMILY = 'MTPreview Math', 'MTPreview Symbol'
 DEPTHS: dict = {}
 MARGIN_PT = 2.0
-AXIS, RULE = 250, 50
-CONSTANTS = {
-    'ScriptPercentScaleDown': 58, 'ScriptScriptPercentScaleDown': 42,
-    'AxisHeight': AXIS, 'FractionRuleThickness': RULE,
-    'FractionNumeratorShiftUp': AXIS + RULE // 2 + 350, 'FractionNumeratorDisplayStyleShiftUp': AXIS + RULE // 2 + 350,
-    'FractionDenominatorShiftDown': 1000 - AXIS + RULE // 2, 'FractionDenominatorDisplayStyleShiftDown': 1000 - AXIS + RULE // 2,
-    'FractionNumeratorGapMin': 80, 'FractionNumDisplayStyleGapMin': 80,
-    'FractionDenominatorGapMin': 80, 'FractionDenomDisplayStyleGapMin': 80,
-    # scripts on a tall base follow its edges: superscript baseline ~0.35 script-em below the top of a tall fence
-    'SubscriptShiftDown': 250, 'SubscriptTopMax': 2000, 'SubscriptBaselineDropMin': 100,
-    'SuperscriptShiftUp': 450, 'SuperscriptShiftUpCramped': 450, 'SuperscriptBottomMin': 0,
-    'SuperscriptBaselineDropMax': 210, 'SubSuperscriptGapMin': 80, 'SpaceAfterScript': 0,
-    'OverbarVerticalGap': 110, 'OverbarExtraAscender': 0,
-    'UpperLimitGapMin': 80, 'UpperLimitBaselineRiseMin': 250, 'LowerLimitGapMin': 80, 'LowerLimitBaselineDropMin': 1000,
-}
+AXIS = 250                                           # maths axis, 1/1000 em (MathType: 25 %)
+
+
+def constants():
+    """MATH table constants (1/1000 em) from the equation profile (MathType's spacing table)."""
+    P = mtef_profile.PROFILE
+    pc = lambda key: round(P.pct(key) * 10)
+    rule, gap = max(1, pc('FractBarThick')), pc('MinGap')
+    return {
+        'ScriptPercentScaleDown': round(P.size_pct('Script')), 'ScriptScriptPercentScaleDown': round(P.size_pct('ScriptScript')),
+        'AxisHeight': AXIS, 'FractionRuleThickness': rule,
+        'FractionNumeratorShiftUp': AXIS + rule // 2 + pc('NumerHeight'),
+        'FractionNumeratorDisplayStyleShiftUp': AXIS + rule // 2 + pc('NumerHeight'),
+        'FractionDenominatorShiftDown': pc('DenomDepth') - AXIS + rule // 2,
+        'FractionDenominatorDisplayStyleShiftDown': pc('DenomDepth') - AXIS + rule // 2,
+        'FractionNumeratorGapMin': gap, 'FractionNumDisplayStyleGapMin': gap,
+        'FractionDenominatorGapMin': gap, 'FractionDenomDisplayStyleGapMin': gap,
+        # scripts on a tall base follow its edges: superscript baseline ~0.35 script-em below the top of a tall fence
+        'SubscriptShiftDown': pc('SubscriptDepth'), 'SubscriptTopMax': 2000, 'SubscriptBaselineDropMin': 100,
+        'SuperscriptShiftUp': pc('SuperscriptHeight'), 'SuperscriptShiftUpCramped': pc('SuperscriptHeight'),
+        'SuperscriptBottomMin': 0, 'SuperscriptBaselineDropMax': round(0.36 * P.size_pct('Script') * 10),
+        'SubSuperscriptGapMin': gap, 'SpaceAfterScript': 0,
+        'OverbarVerticalGap': round(pc('EmbellGap') * 0.88), 'OverbarExtraAscender': 0,
+        'UpperLimitGapMin': gap, 'UpperLimitBaselineRiseMin': pc('LimHeight'), 'LowerLimitGapMin': gap,
+        'LowerLimitBaselineDropMin': pc('LimDepth'),
+    }
+
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -96,14 +108,15 @@ def urw_symbol():
 
 def font_path():
     """Renamed Termes Math with MathType's MATH constants (cached by content; GUST Font License: renamed copy)."""
-    key = hashlib.sha1(json.dumps(CONSTANTS, sort_keys=True).encode()).hexdigest()[:10]
+    consts = constants()
+    key = hashlib.sha1(json.dumps(consts, sort_keys=True).encode()).hexdigest()[:10]
     out = CACHE / f'mtpreview-math-{key}.otf'
     if out.exists():
         return out
     from fontTools.ttLib import TTFont
     f = TTFont(termes_math())
     mc = f['MATH'].table.MathConstants
-    for k, v in CONSTANTS.items():
+    for k, v in consts.items():
         cur = getattr(mc, k)
         if hasattr(cur, 'Value'):
             cur.Value = v
@@ -238,9 +251,17 @@ def _el(tag, attrs=None, children=(), text=None):
     return x
 
 
+def _integral_geometry():
+    """Symbol integral (glyph box -107..916 per 1000) at the symbol size, centred on the axis: (size %, baseline
+    offset, bottom, top, gap) in em of the full size."""
+    s = mtef_profile.PROFILE.size_pct('Symbol') / 100
+    off = AXIS / 1000 - (0.916 - 0.107) / 2 * s
+    return round(s * 100), off, off - 0.107 * s, off + 0.916 * s, mtef_profile.PROFILE.pct('SubSupGap') / 100
+
+
 def _sign(t):
     return _el('mo', {'data-sym': 1, 'lspace': '0em', 'rspace': '0em', 'stretchy': 'false', 'largeop': 'false',
-                      'movablelimits': 'false', 'mathsize': '150%'}, text=t)
+                      'movablelimits': 'false', 'mathsize': f'{_integral_geometry()[0]}%'}, text=t)
 
 
 def transform(mml):
@@ -253,11 +274,12 @@ def transform(mml):
         if _ln(op) != 'mo' or (op.text or '').strip() not in INTEGRALS:
             continue
         lower, upper = s[1], (s[2] if len(s) > 2 else None)
-        lo = _el('mpadded', {'voffset': '-0.517em', **({'width': '0em'} if upper is not None else {})},
+        _, off, bottom, top, gap = _integral_geometry()
+        lo = _el('mpadded', {'voffset': f'{bottom:.3f}em', **({'width': '0em'} if upper is not None else {})},
                  [_el('mstyle', {'scriptlevel': '+1'}, [lower])])
-        parts = [_el('mpadded', {'voffset': '-0.357em'}, [_sign(op.text.strip())]), _el('mspace', {'width': '0.08em'}), lo]
+        parts = [_el('mpadded', {'voffset': f'{off:.3f}em'}, [_sign(op.text.strip())]), _el('mspace', {'width': f'{gap:.3f}em'}), lo]
         if upper is not None:
-            parts.append(_el('mpadded', {'voffset': '0.62em'}, [_el('mstyle', {'scriptlevel': '+1'}, [upper])]))
+            parts.append(_el('mpadded', {'voffset': f'{top - 0.4:.3f}em'}, [_el('mstyle', {'scriptlevel': '+1'}, [upper])]))
         parts.append(_el('mspace', {'width': '0.1em'}))
         new = _el('mrow', {}, parts)
         new.tail = s.tail
@@ -265,7 +287,8 @@ def transform(mml):
     for op in list(root.iter(f'{{{M}}}mo')):
         t = (op.text or '').strip()
         if t in INTEGRALS and op.get('mathsize') is None:
-            new = _el('mrow', {}, [_el('mpadded', {'voffset': '-0.357em'}, [_sign(t)]), _el('mspace', {'width': '0.1em'})])
+            new = _el('mrow', {}, [_el('mpadded', {'voffset': f'{_integral_geometry()[1]:.3f}em'}, [_sign(t)]),
+                                   _el('mspace', {'width': '0.1em'})])
             new.tail = op.tail
             op.getparent().replace(op, new)
     for mv in list(root.iter(f'{{{M}}}mover')):
@@ -292,6 +315,7 @@ def transform(mml):
             op.set('stretchy', 'true')
             if t in '[{⟦':
                 op.set('rspace', '0.1em')
+    oper = mtef_profile.PROFILE.pct('OperSpacing') / 100          # operator spacing, % of normal
     for op in root.iter(f'{{{M}}}mo', f'{{{M}}}mi'):
         t = (op.text or '').strip()
         if not t or t in FENCE_CHARS or op.get('stretchy') == 'true' or op.get('data-sym') is not None:
@@ -307,14 +331,14 @@ def transform(mml):
         if _in_script(op):
             l = r = 0
         elif t in REL or t in (':=', '/'):
-            l = r = 0.21
+            l = r = round(0.21 * oper, 3)
         elif t in BIN:
             prev = op.getprevious()
             pt = (prev.text or '').strip() if prev is not None and _ln(prev) == 'mo' else None
             unary = prev is None or (pt is not None and (pt in REL or pt in BIN or pt in PUNCT or pt in '([{⟨〈'))
-            l = r = 0 if unary else 0.18
+            l = r = 0 if unary else round(0.18 * oper, 3)
         elif t in PUNCT:
-            l, r = 0, 0.14
+            l, r = 0, round(0.14 * oper, 3)
         else:
             l = r = 0
         op.set('lspace', f'{l}em')
@@ -349,6 +373,7 @@ def html_for(mml_text, font_px):
     m = re.sub(r'<mo([^>]*stretchy="true"[^>]*)>', r'<mo data-tx="1"\1>', m)
     m = re.sub(r'<mo([^>]*)>([∑∏⟨⟩⟦⟧])</mo>', r'<mo data-tx="1"\1>\2</mo>', m)
     h = MM._html(m, font_px)
+    over = round(mtef_profile.PROFILE.pct('FractBarOver') / 100, 3)
     css = f"""
 @font-face {{ font-family: "{MATH_FAMILY}"; src: url("{font_path().as_uri()}"); }}
 @font-face {{ font-family: "{SYMBOL_FAMILY}"; src: url("{symbol_font_path().as_uri()}"); }}
@@ -363,7 +388,7 @@ mo[data-tx] {{ font-family: "{MATH_FAMILY}"; }}
 [data-sym="i"] {{ font-style: italic !important; }}
 mtd {{ text-align: left; }}
 mtable, mtd, mfrac > * {{ math-style: normal !important; math-depth: auto !important; }}
-mfrac > * {{ padding-left: 0.08em; padding-right: 0.08em; }}
+mfrac > * {{ padding-left: {over}em; padding-right: {over}em; }}
 """
     h = h.replace('</style>', css + '</style>', 1)
     h = h.replace('<div class="box">', '<div style="display:inline-block;padding:60px;background:#fff">'
@@ -384,7 +409,7 @@ def render_mathml_files(mathml_dir, output_dir, chrome_path=None, font_px=38):
     out.mkdir(parents=True, exist_ok=True)
     exe = chrome_path or os.environ.get('MATHTYPE_CHROMIUM')
     scale = 2
-    margin = round(MARGIN_PT / 12 * font_px * scale)
+    margin = round(MARGIN_PT / mtef_profile.PROFILE.full_pt * font_px * scale)
     dump = os.environ.get('PREVIEW_DUMP_MML')
     with sync_playwright() as pw:
         browser = pw.chromium.launch(**({'executable_path': os.path.realpath(exe)} if exe else {}))
