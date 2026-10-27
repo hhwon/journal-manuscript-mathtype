@@ -50,9 +50,10 @@ class Reader:
                 self.p += 4
 
     def ruler(self):
-        tag = self.u8()
-        if tag != 7:
-            raise Bad(f'expected RULER at {self.p - 1}, got {tag}')
+        # The specification shows a RULER record type byte (7); MathType writes the ruler of a LINE/PILE without it
+        # (genuine equations: 01 02 | 01 | 00 2c 16 = one left tab at 0x162c). Accept both.
+        if self.b[self.p] == 7:
+            self.p += 1
         n = self.u8()
         self.p += 3 * n
 
@@ -188,6 +189,15 @@ class Reader:
             self.p += 8 if opt & 1 else 6
             if opt & 4:
                 self.zstr()
+        elif tag == 17:                             # FONT_DEF inside the equation (before its first use)
+            self.uint(); self.zstr()
+        elif tag == 19:                             # ENCODING_DEF inside the equation
+            self.zstr()
+        elif tag == 18:                             # EQN_PREFS
+            self.u8(); self.dims(); self.dims()
+            for _ in range(self.u8()):
+                if self.uint():
+                    self.u8()
         elif tag >= 100:
             self.p += self.u16()
         else:
