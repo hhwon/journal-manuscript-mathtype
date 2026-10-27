@@ -1,0 +1,10 @@
+# local environment and caches (never commit)
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+_cache/
+# build outputs written while testing
+*.equations.json
+/out/
+/tmp/

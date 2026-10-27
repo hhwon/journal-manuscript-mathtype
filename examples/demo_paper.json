@@ -1,0 +1,128 @@
+{
+  "title": "An Illustrative Manuscript: Steady Diffusion in a Square Plate",
+  "authors": [
+    ["A. Author", "1*"],
+    ["B. Author", "2"]
+  ],
+  "affiliations": [
+    ["1", "Department of Example Studies, Example University, City, Country"],
+    ["2", "Example Research Institute, City, Country"]
+  ],
+  "corresponding_author": "corresponding-author@example.org",
+  "abstract": "This synthetic manuscript demonstrates the document layout produced by the Skill. A steady diffusion problem in a square plate is used only as a vehicle for inline and display equations, a figure, a table and cross-references. No result in this document is research data.",
+  "keywords": [
+    "Layout test",
+    "Diffusion",
+    "Boundary-value problem"
+  ],
+  "sections": [
+    {
+      "heading": "1. Introduction",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Steady diffusion in a homogeneous plate is a classical boundary-value problem. It is used here only to show how equations, figures and tables are set in the manuscript layout."
+        },
+        {
+          "type": "paragraph",
+          "segments": [
+            {"text": "The unknown field is denoted by "},
+            {"latex": "u(\\mathbf{x})"},
+            {"text": " and the plate occupies the domain "},
+            {"latex": "\\Omega=(0,1)^2"},
+            {"text": "."}
+          ]
+        },
+        {
+          "type": "subsection",
+          "heading": "1.1 Governing equations"
+        },
+        {
+          "type": "paragraph",
+          "text": "The flux is related to the gradient of the field by"
+        },
+        {
+          "type": "equation",
+          "latex": "\\mathbf{q}=-k\\nabla u",
+          "id": "eq:flux"
+        },
+        {
+          "type": "paragraph",
+          "text": "where q is the flux vector and k > 0 is the diffusivity. The weak form of the balance equation reads"
+        },
+        {
+          "type": "equation",
+          "latex": "\\int_\\Omega k\\,\\nabla u\\cdot\\nabla v\\,d\\Omega=\\int_\\Omega f v\\,d\\Omega+\\int_{\\Gamma_N}\\bar{q}\\,v\\,d\\Gamma",
+          "id": "eq:weak"
+        },
+        {
+          "type": "paragraph",
+          "text": "for every admissible test function v. A two-node discretisation leads to the matrix equation"
+        },
+        {
+          "type": "equation",
+          "latex": "\\frac{k}{h}\\begin{bmatrix}1 & -1\\\\ -1 & 1\\end{bmatrix}\\begin{bmatrix}u_1\\\\ u_2\\end{bmatrix}=\\begin{bmatrix}f_1\\\\ f_2\\end{bmatrix}",
+          "id": "eq:matrix"
+        },
+        {
+          "type": "paragraph",
+          "segments": [
+            {"text": "The relation in "},
+            {"ref": "eq:flux"},
+            {"text": " and the weak form "},
+            {"ref": "eq:weak"},
+            {"text": " are the reference model of the following section."}
+          ]
+        }
+      ]
+    },
+    {
+      "heading": "2. Illustrative numerical layout",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "The figure and the table below contain schematic data for layout testing only and must not be reported as research findings."
+        },
+        {
+          "type": "figure",
+          "path": "demo_figure.png",
+          "width_inches": 4.2,
+          "caption": "Illustrative variation of a normalised response with a dimensionless coordinate (layout demonstration only).",
+          "id": "fig:illustration",
+          "alt_text": "Illustrative curve of normalised response versus coordinate."
+        },
+        {
+          "type": "table",
+          "caption": "Illustrative values used to test table formatting (not research data).",
+          "headers": ["Case", "Number of elements", "Relative error"],
+          "rows": [["A", "4", "0.010"], ["B", "16", "0.006"], ["C", "64", "0.003"]],
+          "note": "Note: All values are synthetic.",
+          "id": "tab:illustration"
+        },
+        {
+          "type": "paragraph",
+          "segments": [
+            {"text": "The illustration is shown in "},
+            {"ref": "fig:illustration"},
+            {"text": " and summarised in "},
+            {"ref": "tab:illustration"},
+            {"text": ". Both are formatting examples only."}
+          ]
+        }
+      ]
+    },
+    {
+      "heading": "3. Conclusions",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "The example demonstrates a document workflow that combines a consistent manuscript layout with editable MathType equations, figures and tables. No physical conclusion is drawn from the illustrative data."
+        }
+      ]
+    }
+  ],
+  "references": [
+    "Example reference entry: replace with a verified bibliographic record before submission."
+  ],
+  "sample_data": true
+}

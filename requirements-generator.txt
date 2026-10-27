@@ -1,0 +1,11 @@
+# OPTIONAL: current generation adapter for newly written MathType formulas.
+# This is separate from our own DOCX OLE editing core and is not needed to edit
+# existing formulas from a known genuine MathType OLE donor.
+-r requirements.txt
+latex2mathml>=3.77,<4
+olefile>=0.47,<1
+# Requires GitHub and git; upstream code at pinned SHA is AGPL-3.0-only.
+docx-equation @ git+https://github.com/npofsi/docx-equation.git@b70517cc22e85cb003d541dc592af2ee0e70ac7c
+# MathType-like equation previews (preview_math.py): run `python -m playwright install chromium` once
+playwright>=1.40,<2
+numpy>=1.24

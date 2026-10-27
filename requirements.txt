@@ -1,0 +1,6 @@
+# Minimal prerequisites for self-owned DOCX OLE editing and manuscript layout.
+# No MathType installation, Word, Chromium, GitHub access or AGPL backend needed.
+python-docx>=1.0,<2
+lxml>=5.0,<7
+Pillow>=10.0,<13
+fonttools>=4.40,<5

@@ -1,0 +1,53 @@
+{
+ "purpose": "Run these examples with the real MathType backend; all must survive Windows edit-save-open before release.",
+ "equations": [
+  {
+   "name": "divergence",
+   "latex": "\\sigma_{ij,j}-\\tau_{ijk,jk}+f_i=0"
+  },
+  {
+   "name": "energy",
+   "latex": "W=\\frac{1}{2}C_{ijkl}\\varepsilon_{ij}\\varepsilon_{kl}"
+  },
+  {
+   "name": "integral",
+   "latex": "\\int_{\\Omega} \\nabla v \\cdot \\nabla u\\,\\mathrm{d}\\Omega"
+  },
+  {
+   "name": "derivative",
+   "latex": "\\frac{\\partial^2 u}{\\partial x_i\\partial x_j}"
+  },
+  {
+   "name": "series",
+   "latex": "\\sum_{i=1}^{N}\\frac{a_i}{b_i}"
+  },
+  {
+   "name": "matrix",
+   "latex": "\\begin{bmatrix}K_{uu}&K_{u\\phi}\\\\K_{\\phi u}&K_{\\phi\\phi}\\end{bmatrix}"
+  },
+  {
+   "name": "piecewise",
+   "latex": "f(x)=\\begin{cases}x^2,&x\\ge0\\\\-x,&x<0\\end{cases}"
+  },
+  {
+   "name": "vector",
+   "latex": "\\mathbf{q}=-\\boldsymbol{\\kappa}\\nabla T"
+  },
+  {
+   "name": "average",
+   "latex": "\\left\\langle q_i\\right\\rangle = \\frac{1}{|\\Omega|}\\int_{\\Omega} q_i\\,\\mathrm{d}\\Omega"
+  },
+  {
+   "name": "ratio-norm",
+   "latex": "\\eta=\\frac{\\ell}{R},\\qquad \\rho=\\frac{\\lVert A-A^{\\ast}\\rVert}{\\lVert A\\rVert}"
+  },
+  {
+   "name": "subscript",
+   "latex": "a^{\\mathrm{M}}_{ijklmn}=a^{\\mathrm{m}}_{ijklmn}"
+  },
+  {
+   "name": "greek",
+   "latex": "\\varphi=\\theta+\\frac{\\pi}{2}"
+  }
+ ]
+}
