@@ -47,7 +47,8 @@ FULL, SUB, SYM = b'\x0a', b'\x0b', b'\x0d'
 # ---------------------------------------------------------------------------------------------------------------------
 # MathType equation preferences, in the order of the MTEF EQN_PREFS record and of MathType's .eqp files
 # ("; MathType INI v1: Equation Preferences", sections [Styles], [Sizes], [Spacing]).
-STYLE_KEYS = ['Text', 'Function', 'Variable', 'LCGreek', 'UCGreek', 'Symbol', 'Vector', 'Number', 'User1', 'User2', 'MTExtra']
+STYLE_KEYS = ['Text', 'Function', 'Variable', 'LCGreek', 'UCGreek', 'Symbol', 'Vector', 'Number', 'User1', 'User2', 'MTExtra',
+              'TextFE']                              # Text (FE): text style for East Asian characters, optional
 SIZE_KEYS = ['Full', 'Script', 'ScriptScript', 'Symbol', 'SubSymbol', 'User1', 'User2', 'SmallLargeIncr']
 SPACING_KEYS = ['LineSpacing', 'MatrixRowSpacing', 'MatrixColSpacing', 'SuperscriptHeight', 'SubscriptDepth', 'SubSupGap',
                 'LimHeight', 'LimDepth', 'LimLineSpacing', 'NumerHeight', 'DenomDepth', 'FractBarOver', 'FractBarThick',
@@ -84,7 +85,7 @@ def read_eqp(path):
     text = Path(path).read_text(encoding='utf-8-sig', errors='strict')
     if not re.search(r'^\s*;\s*MathType INI v1\s*:\s*Equation Preferences', text, re.M | re.I):
         raise ValueError(f'{path}: not a MathType INI v1 equation preference file')
-    styles, sizes, spacing, notes = list(FACTORY_STYLES), list(FACTORY_SIZES), list(FACTORY_SPACING), []
+    styles, sizes, spacing, notes = list(FACTORY_STYLES) + [None], list(FACTORY_SIZES), list(FACTORY_SPACING), []
     seen, section = set(), ''
     keys = {'styles': STYLE_KEYS, 'sizes': SIZE_KEYS, 'spacing': SPACING_KEYS}
     for n, line in enumerate(text.splitlines(), 1):
@@ -99,7 +100,7 @@ def read_eqp(path):
             notes.append(f'line {n} ignored: {line[:60]}')
             continue
         key, value = (x.strip() for x in line.split('=', 1))
-        key = next((k for k in keys[section] if k.lower() == key.lower()), None)
+        key = next((k for k in keys[section] if k.lower() == re.sub(r'[\s()]', '', key).lower()), None)
         if key is None:
             notes.append(f'line {n} ignored (unknown key): {line[:60]}')
             continue
@@ -117,7 +118,7 @@ def read_eqp(path):
                 raise ValueError(f'{path} line {n}: unsupported dimension {value!r}')
             (sizes if section == 'sizes' else spacing)[i] = (m.group(1), m.group(2))
     for section, ks in keys.items():
-        missing = [k for k in ks if (section, k) not in seen]
+        missing = [k for k in ks if (section, k) not in seen and k != 'TextFE']
         if missing:
             notes.append(f'[{section.title()}] not in the file, factory value used: {", ".join(missing)}')
     if sizes[0][1] != 'pt':
@@ -139,8 +140,10 @@ class Profile:
     def __post_init__(self):
         if self.matrix_align not in MATRIX_ALIGN:
             raise ValueError(f'matrix_align must be one of {sorted(MATRIX_ALIGN)}')
-        if len(self.styles) != 11 or len(self.sizes) != 8 or len(self.spacing) != 30:
-            raise ValueError('a profile needs 11 styles, 8 sizes and 30 spacing values')
+        if len(self.styles) == 11:
+            self.styles = list(self.styles) + [None]           # Text (FE) unused
+        if len(self.styles) != 12 or len(self.sizes) != 8 or len(self.spacing) != 30:
+            raise ValueError('a profile needs 11 styles (+ optional Text FE), 8 sizes and 30 spacing values')
         if self.styles[5][0] != 'Symbol':
             self.notes.append('Symbol style not in the Symbol font: MathType cannot build tall brackets and integrals '
                               'from it when it redraws an equation')
@@ -171,9 +174,9 @@ class Profile:
 
     def font_defs(self):
         fonts = []
-        for f, _ in self.styles:
-            if f not in fonts:
-                fonts.append(f)
+        for st in self.styles:
+            if st and st[0] not in fonts:
+                fonts.append(st[0])
         return fonts
 
 
@@ -213,18 +216,34 @@ def configure(greek: str | None = None, matrix_align: str = 'center', profile_js
 def _eqn_prefs():
     fonts = PROFILE.font_defs()
     out = bytearray([0x12, 0x00]) + encode_dimensions(PROFILE.sizes) + encode_dimensions(PROFILE.spacing)
-    out.append(12)                                   # 11 styles + Text FE (unused)
-    for font, bits in PROFILE.styles:
-        out += bytes([fonts.index(font) + 1, bits])
-    out.append(0)
+    out.append(12)                                   # 11 styles + Text FE
+    for st in PROFILE.styles:
+        out += bytes([fonts.index(st[0]) + 1, st[1]]) if st else b'\x00'
     return bytes(out)
+
+
+def _font_name_bytes(name):
+    """Font names as MathType writes them: Latin names as is; East Asian names in the ANSI code page (GBK for
+    Chinese, e.g. SimSun = cb ce cc e5) with the WinAllCodePages encoding."""
+    try:
+        return name.encode('latin-1'), False
+    except UnicodeEncodeError:
+        return name.encode('gbk'), True
 
 
 def _preamble(mathtype_version):
     version = mathtype_version.upper()
     assert version in {'DSMT4', 'DSMT6'}
-    head = b'\x05\x01\x00\x06\x09' + version.encode('ascii') + b'\x00\x01' + b'\x13WinAllBasicCodePages\x00'
-    return head + b''.join(MT._font_def(ENCODINGS.get(f, 5), f) for f in PROFILE.font_defs()) + _eqn_prefs()
+    out = b'\x05\x01\x00\x06\x09' + version.encode('ascii') + b'\x00\x01' + b'\x13WinAllBasicCodePages\x00'
+    extended = False
+    for f in PROFILE.font_defs():
+        raw, wide = _font_name_bytes(f)
+        if wide and not extended:
+            out += b'\x13WinAllCodePages\x00'           # second ENCODING_DEF: index 6
+            extended = True
+        enc = 6 if wide else ENCODINGS.get(f, 5)
+        out += b'\x11' + bytes([enc]) + raw + b'\x00'
+    return out + _eqn_prefs()
 
 
 MT._preamble = _preamble
