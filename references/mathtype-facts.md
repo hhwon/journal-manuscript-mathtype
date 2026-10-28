@@ -32,6 +32,7 @@ The modules that implement these facts: `mtef_profile.py` (MTEF), `preview_math.
 | Scripts: TMPL 27/28/29, SUB size, slots, END, FULL size. | genuine |
 | Big operator: TMPL, LINE body, SUB size, lower, upper, SYM size (0x0d), CHAR operator (Symbol style), END; variation tvBO_LOWER 0x10, tvBO_UPPER 0x20, tvBO_SUM 0x40, integrals tvINT_1..3. | genuine, spec, EqLab |
 | Fence: TMPL selector, variation (left 0x01, right 0x02), LINE body, FULL, fence characters with typeface 22 (fnEXPAND, no font position), END. Selectors 0 angle, 1 parenthesis, 2 brace, 3 bracket, 4 bar, 5 double bar, 6 floor, 7 ceiling, 8 white bracket. | genuine, spec |
+| One-sided fence: only the present side has its bit in the variation (left 0x01, right 0x02) and only that side's character follows FULL. An evaluation bar `X|_{S}` is selector 4, variation 0x02, body X, one EC08 character, and the subscript is the next template; write it as `\left. X \right|_{S}` (a plain `\big|` becomes an unstretched bar character with the subscript on it). | genuine |
 | Fence MTCodes: angle 2329/232A, bar EC07/EC08, double bar EC09/EC0A, floor F8F0/F8FB, ceiling F8EE/F8F9, white bracket 301A/301B. | spec, genuine, EqLab |
 | Accent on one character: CHAR with mtefOPT_CHAR_EMBELL + EMBELL record (bar 17, tilde 8, hat 9, right arrow 11). | genuine, spec |
 | CHAR typeface = 128 + style: 1 Text, 2 Function, 3 Variable, 4 LC Greek, 5 UC Greek, 6 Symbol, 7 Vector, 8 Number, 9 User 1, 10 User 2, 11 MT Extra, 22 fnEXPAND, 24 fnSPACE. | spec |

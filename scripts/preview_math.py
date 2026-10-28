@@ -318,6 +318,9 @@ def transform(mml):
     oper = mtef_profile.PROFILE.pct('OperSpacing') / 100          # operator spacing, % of normal
     for op in root.iter(f'{{{M}}}mo', f'{{{M}}}mi'):
         t = (op.text or '').strip()
+        if not t and _ln(op) == 'mo':               # \left. / \right.: an empty fence takes no room (MathType draws none)
+            op.set('lspace', '0em'); op.set('rspace', '0em')
+            continue
         if not t or t in FENCE_CHARS or op.get('stretchy') == 'true' or op.get('data-sym') is not None:
             continue
         if len(t) == 1 and t in SYMBOL_GLYPHS:

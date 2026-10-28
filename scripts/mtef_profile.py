@@ -394,6 +394,11 @@ class BigOp:
                 + MT._maybe_line(self.upper) + SYM + char_record(self.op, SYMBOL) + b'\x00' + FULL)
 
 
+# one-sided fences (\left. X \right| for an evaluation bar, cases braces): selector and character of each side
+OPEN = {k[0]: (v[0], v[1]) for k, v in FENCE.items()}
+CLOSE = {k[1]: (v[0], v[2]) for k, v in FENCE.items()}
+
+
 @dataclass(frozen=True)
 class FenceT:
     body: object
@@ -401,11 +406,19 @@ class FenceT:
     right: str
 
     def encode(self) -> bytes:
-        right = self.right
-        sel, lc, rc = FENCE[(self.left, right if right else {'{': '}', '(': ')', '[': ']'}[self.left])]
-        out = MT._template(sel, 0x01 | (0x02 if right else 0), 0) + MT._line(self.body) + FULL + _fence_char(lc)
-        if right:
-            out += _fence_char(rc)
+        """Variation 0x01 = left fence present, 0x02 = right fence present; only the present sides carry a fence
+        character (genuine MathType writes an evaluation bar as selector 4, variation 0x02, one EC08 character)."""
+        if self.left and self.right:
+            sel, lc, rc = FENCE[(self.left, self.right)]
+        elif self.left:
+            sel, lc = OPEN[self.left]; rc = None
+        else:
+            sel, rc = CLOSE[self.right]; lc = None
+        var = (0x01 if lc else 0) | (0x02 if rc else 0)
+        out = MT._template(sel, var, 0) + MT._line(self.body) + FULL
+        for ch in (lc, rc):
+            if ch:
+                out += _fence_char(ch)
         return out + b'\x00'
 
 
@@ -560,8 +573,10 @@ def _parse_list(children):
                     if depth == 0:
                         close = j
                         break
-            if close is not None and (left, _txt(children[close])) in FENCE:
-                out.append(FenceT(_parse_list(children[i + 1:close]), left, _txt(children[close])))
+            right = _txt(children[close]) if close is not None else None
+            if close is not None and ((left, right) in FENCE or (not left and right in CLOSE)
+                                      or (not right and left in OPEN)):
+                out.append(FenceT(_parse_list(children[i + 1:close]), left, right))
                 i = close + 1
                 continue
             if left == '{' and close is None:                   # cases: left brace only
