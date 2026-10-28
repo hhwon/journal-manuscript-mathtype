@@ -294,7 +294,7 @@ def make_doc(spec, path, preview, chrome_path, write_manifest, source_dir=None, 
     base_dir = Path(source_dir) if source_dir is not None else path.parent
     for section in spec['sections']:
         if section.get('heading'):
-            paragraph(doc, section['heading'], registry, convert, preview, refs, 'MS Heading 1')
+            paragraph(doc, section['heading'], registry, convert, preview, refs, 'Heading 1')
         prev_kind = None
         for item in section.get('blocks', []):
             kind = item.get('type')
@@ -306,8 +306,8 @@ def make_doc(spec, path, preview, chrome_path, write_manifest, source_dir=None, 
                 if item.get('continues', prev_kind == 'equation' and first[:1].islower()):
                     p.paragraph_format.first_line_indent = Inches(0)
             elif kind in ('subsection', 'heading'):
-                style = ('MS Heading 2' if kind == 'subsection' or item.get('level', 1) == 2
-                         else 'MS Heading 1')
+                style = ('Heading 2' if kind == 'subsection' or item.get('level', 1) == 2
+                         else 'Heading 1')
                 paragraph(doc, item['heading'], registry, convert, preview, refs, style)
             elif kind == 'equation':
                 counts['equation'] += 1
@@ -341,10 +341,10 @@ def make_doc(spec, path, preview, chrome_path, write_manifest, source_dir=None, 
                 raise ValueError(f'Unsupported block type {kind!r}')
             prev_kind = kind
     if spec.get('acknowledgements'):
-        paragraph(doc, 'Acknowledgements', registry, convert, preview, refs, 'MS Heading 1')
+        paragraph(doc, 'Acknowledgements', registry, convert, preview, refs, 'Heading 1')
         paragraph(doc, spec['acknowledgements'], registry, convert, preview, refs)
     if spec.get('references'):
-        paragraph(doc, 'References', registry, convert, preview, refs, 'MS Heading 1')
+        paragraph(doc, 'References', registry, convert, preview, refs, 'Heading 1')
         for k, ref in enumerate(spec['references'], 1):
             # numbered list [n] with a hanging indent (tab stop of the style), unless the entries are already numbered
             numbered = isinstance(ref, str) and not ref.lstrip().startswith('[') and spec.get('reference_style', 'numbered') == 'numbered'

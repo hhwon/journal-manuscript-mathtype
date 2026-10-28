@@ -16,7 +16,7 @@ def extract(path):
         'margins_cm':[round(x.cm,2) for x in (sec.left_margin,sec.right_margin,sec.top_margin,sec.bottom_margin)],
         'styles':{},
     }
-    for name in ('MS Title','MS Body','MS Heading 1','MS Heading 2','MS Figure Caption',
+    for name in ('MS Title','MS Body','Heading 1','Heading 2','MS Figure Caption',
                  'MS Table Caption','MS Table Cell','MS References'):
         if name not in doc.styles:
             result['styles'][name]={'error':'missing'}

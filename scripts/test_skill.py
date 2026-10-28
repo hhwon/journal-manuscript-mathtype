@@ -153,7 +153,7 @@ class HouseStyleAndGenuineMathTypeTest(unittest.TestCase):
 
     def test_template_indents_and_spacing(self):
         d = Document(ROOT / 'assets' / 'manuscript-template.docx')
-        for name in ('MS Heading 1', 'MS Heading 2', 'MS Figure', 'MS Figure Caption', 'MS Table Caption',
+        for name in ('Heading 1', 'Heading 2', 'MS Figure', 'MS Figure Caption', 'MS Table Caption',
                      'MS Equation', 'MS Table Cell'):
             self.assertEqual(d.styles[name].paragraph_format.first_line_indent, 0, name)
         for name in ('Normal', 'MS Body', 'MS Abstract'):

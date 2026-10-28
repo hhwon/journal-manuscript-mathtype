@@ -54,6 +54,32 @@ def _style(doc, name, *, size=12, font='Times New Roman', bold=False, italic=Fal
     return s
 
 
+def _heading(doc, name, level, **kw):
+    """A heading style that Word lists in the Navigation Pane and in a table of contents: the built-in
+    'Heading n' style (outline level n-1) with the manuscript formatting; theme fonts and colours removed."""
+    s = _style(doc, name, **kw)
+    rpr = s.element.get_or_add_rPr()
+    rf = rpr.rFonts
+    for a in ('asciiTheme', 'hAnsiTheme', 'eastAsiaTheme', 'cstheme'):
+        if rf is not None and rf.get(qn('w:' + a)) is not None:
+            del rf.attrib[qn('w:' + a)]
+    for tag in ('w:color', 'w:szCs'):
+        for el in rpr.findall(qn(tag)):
+            rpr.remove(el)
+    ppr = s.element.get_or_add_pPr()
+    for el in ppr.findall(qn('w:outlineLvl')):
+        ppr.remove(el)
+    lvl = OxmlElement('w:outlineLvl'); lvl.set(qn('w:val'), str(level - 1))
+    ppr.append(lvl)
+    link = s.element.find(qn('w:link'))           # the linked character style must not bring back theme fonts/colours
+    if link is not None and link.get(qn('w:val')) in doc.styles:
+        crpr = doc.styles[link.get(qn('w:val'))].element.get_or_add_rPr()
+        for el in list(crpr):
+            if el.tag in (qn('w:rFonts'), qn('w:color'), qn('w:sz'), qn('w:szCs')):
+                crpr.remove(el)
+    return s
+
+
 def create_template(output):
     doc = Document()
     sec = doc.sections[0]
@@ -80,12 +106,16 @@ def create_template(output):
            align=WD_ALIGN_PARAGRAPH.JUSTIFY)
     _style(doc, 'MS Keywords', size=12, line=1.5, first_cm=.85, before=6, after=12,
            align=WD_ALIGN_PARAGRAPH.JUSTIFY)
-    _style(doc, 'MS Heading 1', font='Arial', size=14, bold=True,
-           line=1.5, before=18, after=6, keep_next=True,
-           align=WD_ALIGN_PARAGRAPH.LEFT)
-    _style(doc, 'MS Heading 2', size=12, italic=True,
-           line=1.5, before=0, after=0, keep_next=True,
-           align=WD_ALIGN_PARAGRAPH.LEFT)
+    # section headings use Word's built-in heading styles, so that they carry outline levels (Navigation Pane, TOC);
+    # 'MS Heading 1/2' are kept as identical aliases for older builders
+    for name, level in (('Heading 1', 1), ('MS Heading 1', 1)):
+        _heading(doc, name, level, font='Arial', size=14, bold=True,
+                 line=1.5, before=18, after=6, keep_next=True,
+                 align=WD_ALIGN_PARAGRAPH.LEFT)
+    for name, level in (('Heading 2', 2), ('MS Heading 2', 2)):
+        _heading(doc, name, level, size=12, italic=True,
+                 line=1.5, before=0, after=0, keep_next=True,
+                 align=WD_ALIGN_PARAGRAPH.LEFT)
     _style(doc, 'MS Body', size=12, line=1.5, first_cm=.85, after=0,
            align=WD_ALIGN_PARAGRAPH.JUSTIFY)
     _style(doc, 'MS Equation', size=12, line=1.2, before=2, after=2,
