@@ -162,7 +162,7 @@ def inspect(path, expected=0, require_mathtype=False, allow_legacy_equation3=Fal
         instructions = root.xpath('.//w:instrText/text()', namespaces=NS)
         referenced = []
         for instruction in instructions:
-            match = re.search(r'\bREF\s+(MS_(?:EQ|FIG|TAB)_[0-9a-f]+)', instruction)
+            match = re.search(r'\bREF\s+(MS_(?:EQ|FIG|TAB)_[0-9a-f]+|ZEqnNum\d+)', instruction)
             if match:
                 referenced.append(match.group(1))
                 if match.group(1) not in bookmarks:

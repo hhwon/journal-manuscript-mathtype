@@ -74,6 +74,8 @@ When a user reports "MathType font is wrong" or "equation number is not native",
 
 Run `scripts/build_font_comparison_test.py` to create 4 matched semantic-vs-explicit font pairs. Each even-numbered formula carries 5 self-owned MTEF 5 `FONT_STYLE_DEF` records and signed negative typefaces. This route uses genuine donor Times New Roman and Symbol `FONT_DEF` entries, but whether it looks correct inside MathType **must be validated on Windows**.
 
+For a manuscript built by this skill, run `scripts/mathtype_native_numbering.py out.docx` after `ole_fix` (or call `convert(path)` from the builder). It rewrites the `(SEQ Eq)` and fixed `(A.1)` labels as MathType's `MACROBUTTON MTPlaceRef`/`SEQ MTEqn` number fields (lettered labels through `SEQ MTChap \c \* Alphabetic`), the `REF` citations as `GOTOBUTTON`/`REF ZEqnNum…`, adds the hidden `MTEditEquationSection2` section breaks and the `MTDisplayEquation`/`MTEquationSection` styles, keeps every OLE part byte for byte, and checks the counts (`--check`). The field layout is the one MathType writes (see native-numbering.md).
+
 Run `scripts/mathtype_numbering.py` with `--mode exact` to transplant the actual `MACROBUTTON MTPlaceRef` and nested `SEQ MTEqn` fields from a reference Word document whose numbers MathType inserted, and import `MTDisplayEquation` style. This is an experimental native-field transplant, not a proven alternative to MathType's Insert Right-numbered Equation ribbon action; use `test_font_numbering_v4.py` to verify ZIP and XML structure. In particular, using plain `(1)` text or generic `SEQ Equation` is not sufficient for genuine MathType numbering.
 
 ```bash

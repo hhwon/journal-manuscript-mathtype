@@ -11,6 +11,21 @@ MathType 7's Word add-in uses an extended Microsoft Word field structure rather 
 
 Native MathType 7 numbering is required, not Word-only visual imitations. Import the field structure and style from a genuine MathType paper. Preserve the MTEqn sequence name, macro name, control field and referenced display style exactly.
 
+## Field layout written by MathType
+
+Read from Word documents numbered by MathType's ribbon (no field separators inside the MACROBUTTON; its display
+text is its instruction text, so the parentheses and cached numbers are `w:instrText`):
+
+| element | fields |
+|---|---|
+| number | `MACROBUTTON MTPlaceRef \* MERGEFORMAT` { `SEQ MTEqn \h \* MERGEFORMAT` } [bookmark `ZEqnNum` + 6 digits] `(` { `SEQ MTEqn \c \* Arabic \* MERGEFORMAT` } `)` [/bookmark]; chapter label: `(` { `SEQ MTChap \c \* Alphabetic` or `Arabic` } `.` { MTEqn } `)` |
+| reference | `GOTOBUTTON ZEqnNum…  \* MERGEFORMAT` { `REF ZEqnNum… \* Charformat \! \* MERGEFORMAT` → cached `(n)` } |
+| section break | `MACROBUTTON MTEditEquationSection2` + `Equation Chapter c Section 1` (style MTEquationSection, hidden) { `SEQ MTEqn \r \h` } { `SEQ MTSec \r 1 \h` } { `SEQ MTChap \r c \h` } |
+
+The nested SEQ fields are `w:fldSimple` with a `noProof` run. No document variables are needed.
+`scripts/mathtype_native_numbering.py` writes exactly this for a built manuscript. LibreOffice shows
+`MERGEFORMAT` litter for these fields in genuine documents too.
+
 ## Experiment in v4
 
 `scripts/mathtype_numbering.py` upgrades the generated diagnostic document from static numbered tables into real MathType field paragraphs:
